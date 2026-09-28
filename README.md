@@ -8,7 +8,6 @@
   <a href=https://www.youtube.com/watch?v=_pFzHHslhgc target="_blank"><img src=https://img.shields.io/badge/YouTube%20Video-FF0000.svg?logo=youtube height=22px></a>
 </div>
 
-
 ## 🎥 Video
 
 https://github.com/user-attachments/assets/3264efa7-ef6a-4c7b-a043-d819264a93bd

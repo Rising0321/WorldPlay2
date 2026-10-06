@@ -1,4 +1,3 @@
-# JetBrains IDE settings
 # Model weights and local environments are never part of the integration.
 .idea/
 __pycache__/

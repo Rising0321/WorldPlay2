@@ -33,7 +33,11 @@ endpoint list). Deployment is enabled per account by the Reactor team: ask us in
 - Python 3 (for the Hugging Face download tool).
 - On the machine where you open the browser: this repository, Node.js 20+ and [pnpm](https://pnpm.io/installation).
 
-Run every command from the root of this repository.
+Run the following commands from the `reactor/` directory:
+
+```sh
+cd reactor
+```
 
 ## 1. Install the reactor CLI
 
@@ -108,7 +112,7 @@ reconnecting the client alone does not restart it.
 On the machine with your browser:
 
 ```sh
-cd reactor/demo && cp .env.example .env && pnpm install && pnpm dev
+cd demo && cp .env.example .env && pnpm install && pnpm dev
 ```
 
 Open http://localhost:3000 and pick the **Local** endpoint. If the model runs on another machine,
@@ -194,8 +198,10 @@ buffered. A world ends after 256 chunks, the model's limit; reset or pick an ima
 - **Code map:** `worldplay2_app.py` (client commands and session), `worldplay2_model.py`
   (model and settings), `worldplay2_types.py` (controls and messages), `acceleration/` (runtime
   code), `inference/` (streaming and optimized model extensions), `worldplay2.yaml` (settings),
-  `demo/` (client). These live under `reactor/`; shared inference components are imported from
-  the upstream `worldplay2/` and `configs/` packages. The root `reactor.yaml` builds both together.
+  `demo/` (client). These live under `reactor/`, along with `reactor.yaml` and the build configuration.
+  The image fetches a pinned official WorldPlay2 revision for the shared `worldplay2/` and `configs/`
+  packages, then loads the local Reactor adapter. Updating that upstream dependency means changing
+  its commit in `reactor.yaml`; edits to the repository's sibling packages are not included in this build.
 
 ## Where this is going
 

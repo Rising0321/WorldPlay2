@@ -127,11 +127,12 @@ All input items are processed, and videos are saved as `<output_name>.mp4` in
 
 ## ⚡ Quick Start with Reactor Runtime
 
-The [`reactor/`](reactor/README.md) integration serves WorldPlay2 as an interactive model with a browser frontend. The default configuration uses 4 NVIDIA B200 GPUs, Docker and the NVIDIA Container Toolkit. Follow the [Reactor setup guide](reactor/README.md#1-install-the-reactor-cli) to install the CLI and prepare the weights under `weights/base` and `weights/fast`.
+The [`reactor/`](reactor/README.md) integration serves WorldPlay2 as an interactive model with a browser frontend. The default configuration uses 4 NVIDIA B200 GPUs, Docker and the NVIDIA Container Toolkit. Follow the [Reactor setup guide](reactor/README.md#1-install-the-reactor-cli) to install the CLI and prepare the weights under `reactor/weights/base` and `reactor/weights/fast`.
 
-Build and start the model from the repository root, selecting four available GPUs:
+From the repository root, enter `reactor/`, then build and start the model on four available GPUs:
 
 ```bash
+cd reactor
 reactor build
 reactor run --gpus '"device=0,1,2,3"' --port 8080
 ```

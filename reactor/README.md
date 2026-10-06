@@ -12,14 +12,14 @@ What this integration adds to WorldPlay2:
   service on your own GPU machine that any Reactor client can drive: the included frontend, or one you
   build.
 - **It plays in real time.** It streams at a steady 17 frames per second on 4 B200 GPUs.
-- **It deploys as an API.** A step-by-step guide to deploying it to Reactor with the `reactor` CLI.
+- **It deploys as an API.** Serve the same app on Reactor with the `reactor` CLI.
 
 It takes two steps, and each one supports different work:
 
 | Step | What you get | What it supports |
 | --- | --- | --- |
 | **1. Run it locally** (this README) | The model served on your own GPUs, with a local address any client can connect to | Playing it in the included frontend. Building your own frontend or app against it and debugging the app end to end. Debugging the model, benchmarking and evaluating it, all interactively, at the speed people will play it |
-| **2. Serve it as an API** ([DEPLOY.md](https://github.com/reactor-team/reactor-worldplay2/blob/main/DEPLOY.md)) | The same model as a hosted API on Reactor, reachable from anywhere | Sharing a demo with anyone through a link. Shipping your app, or anything built on the model, to your users |
+| **2. Serve it as an API** | The same model as a hosted API on Reactor, reachable from anywhere | Sharing a demo with anyone through a link. Shipping your app, or anything built on the model, to your users |
 
 The client side does not change between the two: a frontend or app built against the local model
 connects to the hosted API by switching its endpoint (the included frontend supports both through its
@@ -121,8 +121,9 @@ edit that endpoint's URL in the page to `http://<gpu-host>:8080` (or add an entr
 over WebRTC: forwarding only the HTTP port through SSH does not carry the video. For SSH-only
 access, also configure a TURN-over-TCP relay and forward its TCP port.
 
-Pick an example from the gallery (each comes with its image and prompt) or add your own image and
-prompt, and start.
+Click **Connect**, then pick an example from the gallery (each comes with its image and prompt)
+or add your own image and prompt to start playing. Hold **WASD** to move, the **arrow keys** to look
+around, or **Space** for the space action. Release the keys or on-screen buttons to stop the corresponding action.
 
 **Check:** video appears and responds to the controls.
 
@@ -163,7 +164,7 @@ flowchart LR
     FE -. "2. switch the endpoint after deploying" .-> CLOUD
 ```
 
-**The same frontend reaches the model once it is deployed** ([DEPLOY.md](https://github.com/reactor-team/reactor-worldplay2/blob/main/DEPLOY.md)). Put your Reactor
+**The same frontend reaches the model once it is deployed.** Put your Reactor
 API key in `reactor/demo/.env` as `REACTOR_API_KEY`, add a hosted **Reactor** endpoint
 (`https://api.reactor.inc`, `apiKeyEnv: "REACTOR_API_KEY"`) in `reactor/demo/endpoints.local.json`, and select it:
 the page then plays the model served on the Reactor platform instead of
@@ -181,7 +182,7 @@ scene (the examples come with one), then start a fresh world.
 | --- | --- |
 | Image | Start a new world from a PNG, JPEG or WebP and its prompt. |
 | Prompt | Change the text for upcoming video, keeping the current world. |
-| Movement, turn, look, Space | Held until changed; choose `none` and uncheck Space to stop. |
+| Movement, turn, look, Space | Hold the keyboard keys or on-screen buttons; release them to stop the corresponding action. |
 | Perspective | Switch between first- and third-person controls. |
 | Yaw / pitch degrees | Turning and looking speed. |
 | Reset | Restart the same image with a seed, keeping prompt and controls. |
@@ -193,8 +194,7 @@ buffered. A world ends after 256 chunks, the model's limit; reset or pick an ima
 ## More
 
 - **Upstream code:** the [official WorldPlay2 code](https://github.com/WorldPlay2/WorldPlay2).
-- **Deploy:** publishing a release and deploying it on the Reactor platform with the `reactor` CLI,
-  step by step, is in [DEPLOY.md](https://github.com/reactor-team/reactor-worldplay2/blob/main/DEPLOY.md). Platform docs: https://docs.reactor.inc/deploy.
+- **Deploy:** see the [Reactor platform docs](https://docs.reactor.inc/deploy) for publishing and deploying with the `reactor` CLI.
 - **Code map:** `worldplay2_app.py` (client commands and session), `worldplay2_model.py`
   (model and settings), `worldplay2_types.py` (controls and messages), `acceleration/` (runtime
   code), `inference/` (streaming and optimized model extensions), `worldplay2.yaml` (settings),

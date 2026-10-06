@@ -145,7 +145,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), select the **Local** endpoint (`http://localhost:8080`), and click **Connect**. Choose an example or add your own image and prompt to start playing, then use **WASD** to move and the **arrow keys** to look around. For a remote GPU machine, see the [connection instructions](reactor/README.md#4-open-the-client), including WebRTC requirements for SSH access.
+Open [http://localhost:3000](http://localhost:3000), select the **Local** endpoint (`http://localhost:8080`), and click **Connect**. Choose an example or add your own image and prompt to start playing, then use **WASD** to move and the **arrow keys** to look around. Release the keys or on-screen buttons to stop the corresponding action. For a remote GPU machine, see the [connection instructions](reactor/README.md#4-open-the-client), including WebRTC requirements for SSH access.
 
 ## 📖 Input Format
 

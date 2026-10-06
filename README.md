@@ -6,13 +6,14 @@
   <a href=https://worldplay2.github.io/ target="_blank"><img src=https://img.shields.io/badge/Project%20Page-333399.svg?logo=homepage height=22px></a>
   <a href=https://arxiv.org/abs/2609.35560 target="_blank"><img src=https://img.shields.io/badge/arXiv-b5212f.svg?logo=arxiv height=22px></a>
   <a href=https://www.youtube.com/watch?v=_pFzHHslhgc target="_blank"><img src=https://img.shields.io/badge/YouTube%20Video-FF0000.svg?logo=youtube height=22px></a>
-  <a href="https://reactor.inc/worldplay2" target="_blank"><img src="reactor/assets/try-on-reactor.svg" alt="Try it on Reactor" height="22"></a>
+  <a href="https://reactor.inc/worldplay2" target="_blank"><img src="reactor/assets/try-on-reactor.svg" alt="Try it on Reactor" width="128" height="22"></a>
 </div>
 
 
 ## 📰 News
 
-WorldPlay2 is now on Reactor! [Play in your browser](https://reactor.inc/worldplay2), or [deploy it locally](reactor/README.md) with the Reactor integration and demo frontend in this repository.
+- **[2026.10.7]** WorldPlay2 is now on Reactor! [Play in your browser](https://reactor.inc/worldplay2), or [deploy it locally](reactor/README.md) with the Reactor integration and demo frontend in this repository.
+- **[2026.10.6]** We have released the WorldPlay2 model weights and inference code!
 
 ## 🎥 Video
 

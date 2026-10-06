@@ -104,8 +104,8 @@ Set the paths to the WorldPlay2 few-step checkpoints and run from the repository
 # LOW_NOISE_CKPT: path to the WorldPlay2 few-step low-noise checkpoint.
 # HIGH_NOISE_CKPT: path to the WorldPlay2 few-step high-noise checkpoint.
 CKPT_DIR=/path/to/model \
-LOW_NOISE_CKPT=/path/to/model/low_noise_model.pt \
-HIGH_NOISE_CKPT=/path/to/model/high_noise_model.pt \
+LOW_NOISE_CKPT=/path/to/model/low_noise_model.safetensors \
+HIGH_NOISE_CKPT=/path/to/model/high_noise_model.safetensors \
 INPUT_JSON=/path/to/input.json \
 OUTPUT_PATH=./outputs/few_step \
 bash run_few_step.sh

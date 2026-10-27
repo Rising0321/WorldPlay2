@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from dataclasses import dataclass, fields
 from io import BytesIO
-import logging
-import os
-import time
 from math import isfinite
 from pathlib import Path
 
 import numpy as np
 import yaml
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 # The DiT's temporal RoPE table has 1024 latent positions, indexed by absolute latent frame, and a
 # chunk is 4 latents, so a world ends after 256 chunks. This is the only cap on a session.
@@ -53,18 +54,23 @@ def load_settings(config_path: Path | None) -> Settings:
         or settings.call_timeout_seconds <= 0
     ):
         raise ValueError("call_timeout_seconds must be finite and positive")
-    if type(settings.target_fps) not in (int, float) or not isfinite(settings.target_fps) or settings.target_fps <= 0:
+    if (
+        type(settings.target_fps) not in (int, float)
+        or not isfinite(settings.target_fps)
+        or settings.target_fps <= 0
+    ):
         raise ValueError("target_fps must be finite and positive")
-    if type(settings.warmup_chunks) is not int or not 0 <= settings.warmup_chunks <= MAX_CHUNKS:
+    if (
+        type(settings.warmup_chunks) is not int
+        or not 0 <= settings.warmup_chunks <= MAX_CHUNKS
+    ):
         raise ValueError(f"warmup_chunks must be an integer in [0, {MAX_CHUNKS}]")
     if (
         settings.height % 32
         or settings.width % 32
         or min(settings.height, settings.width) < 128
     ):
-        raise ValueError(
-            "Resolution must be a multiple of 32, at least 128"
-        )
+        raise ValueError("Resolution must be a multiple of 32, at least 128")
     return settings
 
 
@@ -102,16 +108,15 @@ class EncodePrompt:
 @dataclass(frozen=True)
 class Prepared:
     world_id: int | None
-    seconds: float
 
 
 @dataclass(frozen=True)
 class WorldPlay2Result:
+    """Applied world identity, completed chunk count and CPU uint8 THWC frames."""
+
     world_id: int
     chunk_index: int
     frames: np.ndarray
-    prompt: str
-    action: str
 
 
 def plan_action(
@@ -149,13 +154,10 @@ class WorldPlay2Model:
 
     def load(self, settings: Settings, weights_root: Path) -> None:
         from configs import I2V_A14B_CONFIG
+
         from .inference.pipeline import WorldPlay2Pipeline
 
         self._settings = settings
-        if settings.compile_cache_dir:
-            root = Path(settings.compile_cache_dir).expanduser()
-            os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", str(root / "inductor"))
-            os.environ.setdefault("TRITON_CACHE_DIR", str(root / "triton"))
         self._pipeline = WorldPlay2Pipeline(
             config=I2V_A14B_CONFIG,
             checkpoint_dir=str(weights_root / "base"),
@@ -178,9 +180,9 @@ class WorldPlay2Model:
             exact_optimizations=True,
         )
         self._use_bf16_vae()
-        from .acceleration import install_lossless
+        from .acceleration import install
 
-        install_lossless(self, "num-equal")
+        install(self)
         self._install_flash_attention4()
         if settings.warmup_chunks:
             self._warm_up(settings.warmup_chunks)
@@ -192,9 +194,13 @@ class WorldPlay2Model:
         rows = np.linspace(0, 255, height, dtype=np.float32)[:, None, None]
         cols = np.linspace(0, 255, width, dtype=np.float32)[None, :, None]
         pixels = np.concatenate(
-            [np.broadcast_to(rows, (height, width, 1)),
-             np.broadcast_to(cols, (height, width, 1)),
-             np.broadcast_to((rows + cols) / 2, (height, width, 1))], axis=2)
+            [
+                np.broadcast_to(rows, (height, width, 1)),
+                np.broadcast_to(cols, (height, width, 1)),
+                np.broadcast_to((rows + cols) / 2, (height, width, 1)),
+            ],
+            axis=2,
+        )
         buffer = BytesIO()
         Image.fromarray(pixels.astype(np.uint8)).save(buffer, format="PNG")
         anchor = Anchor(buffer.getvalue(), 0)
@@ -206,10 +212,16 @@ class WorldPlay2Model:
                 WorldPlay2Model.generate(self, PrepareWorld(world, anchor, prompt))
             for index in range(count):
                 action = plan_action("w+right", "fps", 3.0, 1.0, index == 0)
-                WorldPlay2Model.generate(self, WorldPlay2Input(
-                    world, anchor if index == 0 else None, prompt, "w+right", action))
+                WorldPlay2Model.generate(
+                    self,
+                    WorldPlay2Input(
+                        world, anchor if index == 0 else None, prompt, "w+right", action
+                    ),
+                )
         self.reset()
-        logging.info("warm-up: %d chunks in %.1f s; ready", chunks, time.perf_counter() - started)
+        logger.info(
+            "warm-up: %d chunks in %.1f s; ready", chunks, time.perf_counter() - started
+        )
 
     def _use_bf16_vae(self) -> None:
         import torch
@@ -231,46 +243,22 @@ class WorldPlay2Model:
         )
 
     def _begin(self, input: WorldPlay2Input, prepare: bool = False):
-        import torch
-
         if input.anchor is None:
             raise ValueError("A new world requires its uploaded image anchor")
         self.reset()
         anchor = input.anchor
         with Image.open(BytesIO(anchor.image)) as source:
             image = source.convert("RGB")
-        if getattr(self._pipeline, "chunk_stream", False):
-            self._stream = self._pipeline.stream_world(
-                img=image,
-                seed=anchor.seed,
-                num_chunks=MAX_CHUNKS,
-                chunk_input=self._chunk_input,
-                height=self._settings.height,
-                width=self._settings.width,
-                return_cpu=False,
-                prepare=prepare,
-                prompt=input.prompt,
-            )
-            self._world_id = input.world_id
-            return
-        self._stream = self._pipeline.stream_chunked(
-            prompts={"live": input.prompt},
-            chunk_prompts=("live",) * MAX_CHUNKS,
+        self._stream = self._pipeline.stream_world(
             img=image,
-            hr_action=torch.zeros(MAX_CHUNKS * 4, 6),
-            total_latent_frames=MAX_CHUNKS * 4,
-            chunk_length=4,
-            sampling_steps=4,
-            shift=7.0,
-            guide_scale=1.0,
             seed=anchor.seed,
-            offload_model=False,
-            sink_size=1,
-            temporal_size=1,
+            num_chunks=MAX_CHUNKS,
+            chunk_input=self._chunk_input,
             height=self._settings.height,
             width=self._settings.width,
-            chunk_input=self._chunk_input,
             return_cpu=False,
+            prepare=prepare,
+            prompt=input.prompt,
         )
         self._world_id = input.world_id
 
@@ -280,14 +268,13 @@ class WorldPlay2Model:
         if self._pipeline is None:
             raise RuntimeError("Load weights before generating")
         if isinstance(input, (PrepareWorld, EncodePrompt)):
-            started = time.perf_counter()
             if isinstance(input, EncodePrompt):
                 self._pipeline.encode_prompt(input.prompt)
                 world = None
             else:
                 self._begin(input, prepare=True)
                 world = input.world_id
-            return Prepared(world, time.perf_counter() - started)
+            return Prepared(world_id=world)
         if input.world_id != self._world_id:
             self._begin(input)
         if self._stream is None or self._chunk_index >= MAX_CHUNKS:
@@ -307,7 +294,7 @@ class WorldPlay2Model:
             self._pending = None
         self._chunk_index += 1
         result = WorldPlay2Result(
-            input.world_id, self._chunk_index, frames, input.prompt, input.action
+            world_id=input.world_id, chunk_index=self._chunk_index, frames=frames
         )
         if self._chunk_index == MAX_CHUNKS:
             self._stream.close()

@@ -186,10 +186,21 @@ scene (the examples come with one), then start a fresh world.
 | Perspective | Switch between first- and third-person controls. |
 | Yaw / pitch degrees | Turning and looking speed. |
 | Reset | Restart the same image with a seed, keeping prompt and controls. |
+| Pause / Resume | Pause or resume this client’s video stream. Native in-flight work and generation counters can advance; the world is retained. |
 
 Prompts take the form `The scene in the video is: ...`; third-person prompts add
 `The character is: ...`, and `The event is: ...` when needed. Changes apply after the video already
 buffered. A world ends after 256 chunks, the model's limit; reset or pick an image to continue.
+
+## Validation and limits
+
+The service uses Reactor Runtime 3.10.0 and a fixed 17 FPS playback target.
+Generation throughput varies with world length. FA4, FP32 tables and TF32 can
+change floating-point rounding; this profile has no bitwise-equivalence guarantee.
+If preparing a replacement image or reset fails, the selected image and its
+previous seed restart on the next generation step.
+
+Validated 13 CPU tests in both delivery layouts; ten consecutive FPS chunks on four B200 GPUs, two live prompt updates, combined keyboard controls, TPS chunks, video-track pause, invalid-image refusal preserving prompt/pause, TURN/TCP media and disconnect. The canonical image used read-only weights and delivered native 832x448 video with no decoder drops in this run.
 
 ## More
 

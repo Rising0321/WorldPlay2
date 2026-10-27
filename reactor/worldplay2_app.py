@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import threading
 from io import BytesIO
 from pathlib import Path
@@ -28,10 +29,10 @@ from reactor_runtime.distributed import DistributedRunner
 
 from .worldplay2_model import (
     MAX_CHUNKS,
-    Settings,
     Anchor,
     EncodePrompt,
     PrepareWorld,
+    Settings,
     WorldPlay2Input,
     WorldPlay2Model,
     WorldPlay2Result,
@@ -62,7 +63,7 @@ class WorldPlay2(ReactorApp):
     buffer_size = 16
     # Pins playout to a fixed rate instead of each chunk's measured generation time; load()
     # replaces it with the configured target_fps.
-    fps = 22.0
+    fps = 17.0
 
     def __init__(self):
         super().__init__()
@@ -98,7 +99,12 @@ class WorldPlay2(ReactorApp):
         self._preparing += 1
         try:
             world_id = self._world_id + 1
-            await self._encode_now(PrepareWorld(world_id, Anchor(image, seed), prompt), "prepare_failed")
+            await self._encode_now(
+                PrepareWorld(world_id, Anchor(image, seed), prompt), "prepare_failed"
+            )
+        except CommandError:
+            self._active_world = None
+            raise
         finally:
             self._preparing -= 1
         self._world_id = world_id - 1
@@ -106,6 +112,10 @@ class WorldPlay2(ReactorApp):
 
     def load(self, config_path: Path | None) -> None:
         self._settings = load_settings(config_path)
+        if self._settings.compile_cache_dir:
+            root = Path(self._settings.compile_cache_dir).expanduser()
+            os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", str(root / "inductor"))
+            os.environ.setdefault("TRITON_CACHE_DIR", str(root / "triton"))
         self.output.fps = self._settings.target_fps
         self._weights = get_weights_path()
         self._start_engine()
@@ -247,7 +257,9 @@ class WorldPlay2(ReactorApp):
                         engine.reset()
                         return
                     except Exception:
-                        logger.exception("Worker reset failed; replacing the worker group")
+                        logger.exception(
+                            "Worker reset failed; replacing the worker group"
+                        )
                 # A failed reset can leave ranks in different worlds even when
                 # all of them raised the same exception and healthy stays true.
                 engine.shutdown()
@@ -268,7 +280,7 @@ class WorldPlay2(ReactorApp):
 
     @event(
         name="set_image",
-        description="Start a fresh world from an uploaded image and optional prompt. Execute commits both together; blank text uses the upstream FPS/TPS template for the selected perspective. Generation starts on the next runtime playback step; resume if playback is paused. Emits `command_applied` and `state_update`. Rejects with `invalid_image` for an unsupported or undecodable upload and with `prepare_failed` if the world cannot be prepared, without changing the world.",
+        description="Start a fresh world from an uploaded image and optional prompt. Execute commits both together; blank text uses the upstream FPS/TPS template for the selected perspective. Generation starts on the next runtime playback step; resume if playback is paused. Emits `command_applied` and `state_update`. Rejects with `invalid_image` for an unsupported or undecodable upload and with `prepare_failed` if the new world cannot be prepared; the selected image and seed restart on the next step.",
     )
     async def set_image(
         self,
@@ -309,7 +321,7 @@ class WorldPlay2(ReactorApp):
 
     @event(
         name="reset",
-        description="Restart the selected image with a seed. Preserves prompt and held controls; starts a fresh world on the next step. Emits `command_applied` and `state_update`. Requires an uploaded image, otherwise rejects with `image_required`; rejects with `prepare_failed` if the world cannot be prepared.",
+        description="Restart the selected image with a seed. Preserves prompt and held controls; starts a fresh world on the next step. Emits `command_applied` and `state_update`. Requires an uploaded image, otherwise rejects with `image_required`; rejects with `prepare_failed` if preparation fails; the current image and seed restart on the next step.",
     )
     async def reset(
         self,
@@ -322,7 +334,9 @@ class WorldPlay2(ReactorApp):
     ) -> CommandApplied:
         if self._image is None:
             raise CommandError("image_required", "Upload an image before resetting")
-        result = await self._prepare_world("reset", self._image, self.state.prompt, seed)
+        result = await self._prepare_world(
+            "reset", self._image, self.state.prompt, seed
+        )
         self._seed = seed
         return result
 
@@ -339,7 +353,9 @@ class WorldPlay2(ReactorApp):
                 "Model recovery failed; restart the service"
             ) from self._engine_error
         if self._preparing:
-            raise ApplicationError("Preparing the world; generation starts when it is ready")
+            raise ApplicationError(
+                "Preparing the world; generation starts when it is ready"
+            )
         if self._image is None:
             raise ApplicationError("Upload an image before generating")
         prompt = self.state.prompt
@@ -366,11 +382,13 @@ class WorldPlay2(ReactorApp):
     def generate(self, input: WorldPlay2Input) -> WorldPlay2Result:
         return self._engine_generate(input)
 
-    async def process_output(self, outcome: StepOutcome) -> WorldPlay2Output:
+    async def process_output(self, outcome: StepOutcome) -> WorldPlay2Output | None:
         if outcome.error is not None:
             # Input refusal happens before inference; remaining errors are fatal.
             raise outcome.error
         result: WorldPlay2Result = outcome.result
+        if result.world_id != self._world_id:
+            return None
         if result.world_id != self._active_world:
             self.output.flush()
         self._active_world = result.world_id
@@ -380,8 +398,8 @@ class WorldPlay2(ReactorApp):
                 world_id=result.world_id,
                 chunk_index=result.chunk_index,
                 frames=len(result.frames),
-                prompt=result.prompt,
-                action=result.action,
+                prompt=self.state.prompt,
+                action=self.state.action,
                 elapsed_seconds=outcome.elapsed,
             )
         )

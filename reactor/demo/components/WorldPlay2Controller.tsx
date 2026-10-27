@@ -652,10 +652,11 @@ export function WorldPlay2Controller() {
         }
         const extension = blob.type.split("/")[1] || "jpg";
         const ref = await uploadFile(blob, { name: `${example.id}.${extension}` });
-        await sendCommand("set_image", {
+        const applied = await sendCommand("set_image", {
           image: ref,
           prompt: base,
         });
+        if (!applied) return;
         basePromptRef.current = base;
         lastSentPromptRef.current = base;
         setBasePrompt(base);
